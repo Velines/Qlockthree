@@ -125,6 +125,7 @@
 #define TEMP_SENS_NONE
 //#define TEMP_SENS_LM35
 //#define TEMP_SENS_LM335
+//#define TEMP_SENS_DS18B20
 
 #ifndef TEMP_SENS_NONE
   // Temperaturanzeige

@@ -199,6 +199,10 @@
 #include "Events.h"
 #endif
 
+#ifdef TEMP_SENS_DS18B20
+#include <OneWire.h>
+#include <DallasTemperature.h>
+#endif
 
 #define FIRMWARE_VERSION "V 3.4.9.x"
 
@@ -257,7 +261,11 @@ LedDriverDefault ledDriver(10, 12, 11, 3, 10);
 
 #define PIN_SPEAKER 13
 
-#define PIN_TEMP_SENS A2
+#if defined(TEMP_SENS_LM35) || defined(TEMP_SENS_LM335)
+  #define PIN_TEMP_SENS A2
+#elif defined(TEMP_SENS_DS18B20) 
+  #define PIN_TEMP_SENS 3
+#endif
 
 /**
    Der LED-Treiber fuer 4 MAX7219-Treiber wie im Ueberpixel.
@@ -287,7 +295,11 @@ LedDriverUeberPixel ledDriver(5, 6, 7);
 
 #define PIN_SPEAKER 13
 
-#define PIN_TEMP_SENS A2
+#if defined(TEMP_SENS_LM35) || defined(TEMP_SENS_LM335)
+  #define PIN_TEMP_SENS A2
+#elif defined(TEMP_SENS_DS18B20) 
+  #define PIN_TEMP_SENS 7
+#endif
 
 /**
    Der LED-Treiber fuer Power-Shift-Register.
@@ -317,7 +329,11 @@ LedDriverPowerShiftRegister ledDriver(10, 12, 11, 3);
 
 #define PIN_SPEAKER -1
 
-#define PIN_TEMP_SENS A2
+#if defined(TEMP_SENS_LM35) || defined(TEMP_SENS_LM335)
+  #define PIN_TEMP_SENS A2
+#elif defined(TEMP_SENS_DS18B20) 
+  #define PIN_TEMP_SENS 3
+#endif
 
 /**
    Der LED-Treiber fuer NeoPixel-Stripes...
@@ -351,7 +367,11 @@ LedDriverNeoPixel ledDriver(6);
 
 #define PIN_SPEAKER -1
 
-#define PIN_TEMP_SENS A2
+#if defined(TEMP_SENS_LM35) || defined(TEMP_SENS_LM335)
+  #define PIN_TEMP_SENS A2
+#elif defined(TEMP_SENS_DS18B20) 
+  #define PIN_TEMP_SENS 7
+#endif
 
 /**
 * ...an einer CLT.
@@ -381,7 +401,11 @@ LedDriverNeoPixel ledDriver(13);
 
 #define PIN_SPEAKER -1
 
-#define PIN_TEMP_SENS A0
+#if defined(TEMP_SENS_LM35) || defined(TEMP_SENS_LM335)
+  #define PIN_TEMP_SENS A0
+#elif defined(TEMP_SENS_DS18B20) 
+  #define PIN_TEMP_SENS 3
+#endif
 
 /**
  * ...an einem AMBBRTCB V1.0
@@ -411,7 +435,11 @@ LedDriverNeoPixel ledDriver(0);
 
 #define PIN_SPEAKER -1
 
-#define PIN_TEMP_SENS -1
+#if defined(TEMP_SENS_LM35) || defined(TEMP_SENS_LM335)
+  #define PIN_TEMP_SENS -1
+#elif defined(TEMP_SENS_DS18B20) 
+  #define PIN_TEMP_SENS -1
+#endif
 #endif
 
 /**
@@ -443,7 +471,11 @@ LedDriverDotStar ledDriver(6, 7);
 
 #define PIN_SPEAKER -1
 
-#define PIN_TEMP_SENS -1
+#if defined(TEMP_SENS_LM35) || defined(TEMP_SENS_LM335)
+  #define PIN_TEMP_SENS -1
+#elif defined(TEMP_SENS_DS18B20) 
+  #define PIN_TEMP_SENS -1
+#endif
 
 /**
   Der LED-Treiber fuer LPD8806-Stripes...
@@ -478,7 +510,11 @@ LedDriverLPD8806 ledDriver(6, 7);
 
 #define PIN_SPEAKER -1
 
-#define PIN_TEMP_SENS -1
+#if defined(TEMP_SENS_LM35) || defined(TEMP_SENS_LM335)
+  #define PIN_TEMP_SENS -1
+#elif defined(TEMP_SENS_DS18B20) 
+  #define PIN_TEMP_SENS -1
+#endif
 
 /**
   ...an einer CLT.
@@ -509,7 +545,11 @@ LedDriverLPD8806 ledDriver(13, 11);
 
 #define PIN_SPEAKER -1
 
-#define PIN_TEMP_SENS -1
+#if defined(TEMP_SENS_LM35) || defined(TEMP_SENS_LM335)
+  #define PIN_TEMP_SENS -1
+#elif defined(TEMP_SENS_DS18B20) 
+  #define PIN_TEMP_SENS -1
+#endif
 #endif
 
 #endif
@@ -556,7 +596,14 @@ DCF77Helper dcf77Helper;
  * Tempsensor
  */
 #ifndef TEMP_SENS_NONE
+#ifndef TEMP_SENS_DS18B20  
   MyTempSens tempSens(PIN_TEMP_SENS);
+#elif defined(TEMP_SENS_DS18B20)
+    // Setup a oneWire instance to communicate with any OneWire devices
+    OneWire oneWire(PIN_TEMP_SENS);
+    // Pass our oneWire reference to Dallas Temperature sensor 
+    DallasTemperature sensors(&oneWire);
+  #endif
 #endif
 
 /**
@@ -634,7 +681,9 @@ void updateFromRtc() {
   }
 
 #ifndef TEMP_SENS_NONE
+ #if defined(TEMP_SENS_LM35) || defined(TEMP_SENS_LM335)
   tempSens.takeSample();
+ #endif
 #endif
 }
 
@@ -724,9 +773,13 @@ void setup() {
 #ifdef TEMP_SENS_LM35
   DEBUG_PRINTLN(F("Temperatursensortyp ist LM35."));
   tempSens.initLM35();
-#elif defined TEMP_SENS_LM335
+#elif defined(TEMP_SENS_LM335)
   DEBUG_PRINTLN(F("Temperatursensortyp ist LM335."));
   tempSens.initLM335();
+#elif defined(TEMP_SENS_DS18B20)
+  DEBUG_PRINTLN(F("Temperatursensortyp ist DS18B20."));
+  sensors.begin();
+  sensors.setWaitForConversion(false);
 #endif
 
 #ifdef DS1307
@@ -1004,11 +1057,22 @@ void loop() {
 #endif
 #ifdef USE_STD_MODE_TEMP
       case STD_MODE_TEMP:
-      Serial.println(tempSens.getTempC());
-        renderer.clearScreenBuffer(matrix);
+      DEBUG_PRINT(F("Temperatur: "));
+      #if defined(TEMP_SENS_LM35) || defined(TEMP_SENS_LM335)
+        DEBUG_PRINTLN(tempSens.getTempC());
+      #elif defined(TEMP_SENS_DS18B20)
+        sensors.requestTemperatures(); 
+        DEBUG_PRINTLN((unsigned long)(sensors.getTempCByIndex(0)+.5)); 
+      #endif
+      renderer.clearScreenBuffer(matrix);
         for (byte i = 0; i < 7; i++) {
+        #if defined(TEMP_SENS_LM35) || defined(TEMP_SENS_LM335)
           matrix[1 + i] |= pgm_read_byte_near(&(ziffern[tempSens.getTempC() / 10][i])) << 11;
           matrix[1 + i] |= pgm_read_byte_near(&(ziffern[tempSens.getTempC() % 10][i])) << 5;
+        #elif defined(TEMP_SENS_DS18B20)
+          matrix[1 + i] |= pgm_read_byte_near(&(ziffern[(unsigned long)(sensors.getTempCByIndex(0)+.5) / 10][i])) << 11;
+          matrix[1 + i] |= pgm_read_byte_near(&(ziffern[(unsigned long)(sensors.getTempCByIndex(0)+.5) % 10][i])) << 5;
+        #endif
         }
         matrix[0] |= 0b0000000000011111;
         break;
